@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "server.js",
 	"scripts": {
-		"test": "echo \"no test yet"",
+		"test": "echo \"no test yet\"",
 		"start": "node server",
 		"dev": "nodemon server"
 	},
