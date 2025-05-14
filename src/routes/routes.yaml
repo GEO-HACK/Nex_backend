@@ -1,0 +1,186 @@
+openapi: 3.0.0
+info:
+  title: Research Papers API
+  version: 1.0.0
+  description: API for managing users, papers, tags, and categories in the research archive.
+
+servers:
+  - url: http://localhost:5000/api
+
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [institution, fname, lname, email, password]
+              properties:
+                institution:
+                  type: string
+                fname:
+                  type: string
+                lname:
+                  type: string
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: User registered
+
+  /auth/register-admin:
+    post:
+      summary: Register a new admin
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Admin registered
+
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+
+  /auth/logout:
+    post:
+      summary: Logout
+      responses:
+        '200':
+          description: Logout success
+
+  /auth/user:
+    get:
+      summary: Get authenticated user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User data
+
+  /papers:
+    get:
+      summary: Get all papers
+      responses:
+        '200':
+          description: List of papers
+
+    post:
+      summary: Upload a paper
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Upload success
+
+  /papers/local:
+    post:
+      summary: Upload paper locally
+      responses:
+        '200':
+          description: Local upload success
+
+  /papers/{id}:
+    put:
+      summary: Update paper by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paper updated
+
+    delete:
+      summary: Delete paper by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paper deleted
+
+  /tags:
+    get:
+      summary: Get all tags
+      responses:
+        '200':
+          description: List of tags
+
+    post:
+      summary: Add multiple tags
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Tags added
+
+  /tags/single:
+    post:
+      summary: Add single tag
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Tag added
+
+  /categories:
+    get:
+      summary: Get all categories
+      responses:
+        '200':
+          description: List of categories
+
+    post:
+      summary: Add new category
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Category added
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
