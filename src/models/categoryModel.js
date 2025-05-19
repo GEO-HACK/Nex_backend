@@ -1,33 +1,42 @@
-const db = require("../config/dbConfig");
+const sql = require("mssql");
+const config = require("../config/dbConfig"); // your Azure SQL connection config
 
-const createCategory = (category) => {
-	const lower = category.toLowerCase();
-	const stmt = db.prepare("INSERT INTO categories (category) VALUES (?)");
-	return stmt.run(lower);
-};
+async function createCategory(category) {
+  const pool = await sql.connect(config);
+  const lower = category.toLowerCase();
+  const result = await pool.request()
+    .input('category', sql.VarChar, lower)
+    .query('INSERT INTO categories (category) VALUES (@category); SELECT SCOPE_IDENTITY() AS id;');
+  return result.recordset[0]; // inserted category id
+}
 
-const readCategoryByName = (name) => {
-	const lower = name.toLowerCase();
-	const stmt = db.prepare("SELECT category FROM categories WHERE category = ?");
+async function readCategoryByName(name) {
+  const pool = await sql.connect(config);
+  const lower = name.toLowerCase();
+  const result = await pool.request()
+    .input('category', sql.VarChar, lower)
+    .query('SELECT category FROM categories WHERE category = @category');
+  return result.recordset[0];
+}
 
-	return stmt.get(lower);
-};
+async function readCategoryById(id) {
+  const pool = await sql.connect(config);
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query('SELECT category FROM categories WHERE category_id = @id');
+  return result.recordset[0];
+}
 
-const readCategoryById = (id) => {
-	const stmt = db.prepare("SELECT category FROM categories WHERE category_id = ?");
-
-	return stmt.get(id);
-};
-
-const readAllCategories = () => {
-	const stmt = db.prepare("SELECT category_id, category FROM categories");
-
-	return stmt.all();
-};
+async function readAllCategories() {
+  const pool = await sql.connect(config);
+  const result = await pool.request()
+    .query('SELECT category_id, category FROM categories');
+  return result.recordset;
+}
 
 module.exports = {
-	createCategory,
-	readCategoryByName,
-	readCategoryById,
-	readAllCategories,
+  createCategory,
+  readCategoryByName,
+  readCategoryById,
+  readAllCategories,
 };

@@ -1,59 +1,134 @@
-const db = require("../config/dbConfig");
+const { poolConnect, pool } = require("../config/dbConfig");
 
-const createUser = (institutionName, lname, fname, username, email, role, password) => {
-	const institutionId = joinInstitution(institutionName);
+// Helper: Join or create institution, return institution_id
+const joinInstitution = async (institutionName) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
+    request.input("institutionName", institutionName);
 
-	console.log("All details: ")
-	console.log("Password: ", password)
+    // Check if institution exists
+    let result = await request.query(
+      "SELECT institution_id FROM institutions WHERE institution_name = @institutionName"
+    );
 
-	const stmt = db.prepare("INSERT INTO users (institution_id, fname, lname, username, email, role, password) VALUES(?, ?, ?, ?, ?, ?, ?)");
-	return stmt.run(institutionId, fname, lname, username, email, role, password);
+    if (result.recordset.length === 0) {
+      // Institution doesn't exist, insert new one
+      result = await pool
+        .request()
+        .input("institutionName", institutionName)
+        .query(
+          `INSERT INTO institutions (institution_name) VALUES (@institutionName);
+           SELECT SCOPE_IDENTITY() AS institution_id;`
+        );
+      return result.recordset[0].institution_id;
+    }
+
+    return result.recordset[0].institution_id;
+  } catch (error) {
+    throw new Error(`Error fetching institution id: ${error}`);
+  }
 };
 
-const joinInstitution = (institutionName) => {
-	try {
-		let stmt = db.prepare("SELECT institution_id FROM institutions WHERE institution_name = ?");
-		let institution = stmt.get(institutionName);
+// Create user with institution handling
+const createUser = async (
+  institutionName,
+  lname,
+  fname,
+  username,
+  email,
+  role,
+  password
+) => {
+  try {
+    const institutionId = await joinInstitution(institutionName);
 
-		if (!institution) {
-			stmt = db.prepare("INSERT INTO institutions (institution_name) VALUES (?)");
-			const result = stmt.run(institutionName);
-			return result.lastInsertRowid;
-		}
+    console.log("All details: ");
+    console.log("Password: ", password);
 
-		return institution.institution_id;
-	} catch (error) {
-		throw new Error(`Error fetching institution id: ${error}`);
-	}
+    await poolConnect;
+    const request = pool.request();
+
+    request.input("institutionId", institutionId);
+    request.input("fname", fname);
+    request.input("lname", lname);
+    request.input("username", username);
+    request.input("email", email);
+    request.input("role", role);
+    request.input("password", password);
+
+    const result = await request.query(
+      `INSERT INTO users (institution_id, fname, lname, username, email, role, password)
+       VALUES (@institutionId, @fname, @lname, @username, @email, @role, @password);
+       SELECT SCOPE_IDENTITY() AS userId;`
+    );
+
+    return result.recordset[0].userId;
+  } catch (error) {
+    throw new Error(`Error creating user: ${error}`);
+  }
 };
 
-const readUserByMail = (email) => {
-	const stmt = db.prepare("SELECT * FROM users WHERE email = ? ");
-	return stmt.get(email);
+// Read user by email
+const readUserByMail = async (email) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
+    request.input("email", email);
+
+    const result = await request.query("SELECT * FROM users WHERE email = @email");
+    return result.recordset[0] || null;
+  } catch (error) {
+    console.error("Error reading user by email", error);
+    return null;
+  }
 };
 
-const readUserById = (id) => {
-	const stmt = db.prepare("SELECT id, fname, lname, email, role FROM users WHERE id = ?");
-	return stmt.get(id);
+// Read user by id (with limited fields)
+const readUserById = async (id) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
+    request.input("id", id);
+
+    const result = await request.query(
+      "SELECT id, fname, lname, email, role FROM users WHERE id = @id"
+    );
+    return result.recordset[0] || null;
+  } catch (error) {
+    console.error("Error reading user by id", error);
+    return null;
+  }
 };
 
-const getAuthors = (query, limit=10) => {
-	let stmt = db.prepare(`
-	SELECT DISTINCT id, fname, lname, username, institution_id
-	FROM users
-	WHERE (users.fname LIKE ? OR users.lname LIKE ? OR users.username LIKE ?) AND role='Author'
-	LIMIT ?
-	`);
-	
-	const authors = stmt.all(`%${query}%`, `%${query}%`, `%${query}%`, limit);
-	console.log("Fetched authors: ", authors)
-	return authors
+// Get authors by query (search fname, lname, username), limit default 10
+const getAuthors = async (query, limit = 10) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
 
-}
+    request.input("query", `%${query}%`);
+    request.input("limit", limit);
+
+    const result = await request.query(`
+      SELECT DISTINCT id, fname, lname, username, institution_id
+      FROM users
+      WHERE (fname LIKE @query OR lname LIKE @query OR username LIKE @query) AND role = 'Author'
+      ORDER BY fname
+      OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY;
+    `);
+
+    console.log("Fetched authors: ", result.recordset);
+    return result.recordset;
+  } catch (error) {
+    console.error("Error fetching authors", error);
+    return [];
+  }
+};
 
 module.exports = {
-	createUser,
-	readUserByMail,
-	readUserById,
-	getAuthors,
+  createUser,
+  readUserByMail,
+  readUserById,
+  getAuthors,
 };

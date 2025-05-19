@@ -1,112 +1,147 @@
-const db = require("../config/dbConfig");
-const database = require("../config/dbSetupConfig");
-const fs = require("fs");
-const path = require("path");
+const sql = require("mssql");
+const config = require("../config/dbConfig"); // Your Azure SQL config here
 
-const BACKUP_PATH = "../backups";
+const ALLOWED_TABLES = ["papers", "users", "categories", "author_papers", "tags", "paper_tags"];
 
-const resetTable = (table) => {
-	stmt = db.prepare(`DROP TABLE IF EXISTS ${table}`);
+/**
+ * Drops a table if it exists
+ * @param {string} table - Table name to drop
+ * @returns {Promise<boolean>}
+ */
+async function resetTable(table) {
+  if (!ALLOWED_TABLES.includes(table)) {
+    throw new Error("Unrecognized table");
+  }
 
-	try {
-		stmt.run();
-		return true;
-	} catch (error) {
-        console.error("Error resetting table: ", error)
-		return false;
-	}
-};
+  try {
+    const pool = await sql.connect(config);
+    const dropQuery = `
+      IF OBJECT_ID('${table}', 'U') IS NOT NULL
+        DROP TABLE ${table};
+    `;
+    await pool.request().query(dropQuery);
+    return true;
+  } catch (error) {
+    console.error("Error resetting table:", error);
+    return false;
+  }
+}
 
-const resetAllTables = () => {
-	try {
-		const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type='table'`).all();
-		if (tables.length === 0) {
-			console.log("No tables found.");
-			return null;
-		}
+/**
+ * Reads all rows from a table (allowed only)
+ * @param {string} table - Table name
+ * @returns {Promise<Array>}
+ */
+async function readTable(table) {
+  if (!ALLOWED_TABLES.includes(table)) {
+    throw new Error("Unrecognized table");
+  }
 
-		// Generate a unique backup file with timestamp
-		const timestamp = new Date().toISOString().replace(/[:.]/g, "-"); // Avoid invalid filename characters
-		const backupFile = path.join(__dirname, `${BACKUP_PATH}/backup_${timestamp}.sql`);
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool.request().query(`SELECT * FROM ${table}`);
+    return result.recordset;
+  } catch (error) {
+    console.error("Error reading table:", error);
+    throw error;
+  }
+}
 
-		// Backup table schemas
-		let backupSQL = "";
-		tables.forEach(({ name }) => {
-			const schema = db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`).get(name);
-			if (schema && schema.sql) {
-				backupSQL += schema.sql + ";\n";
-			}
-		});
+/**
+ * Resets (drops) all allowed tables
+ * WARNING: This deletes all tables and data.
+ * @returns {Promise<boolean>}
+ */
+async function resetAllTables() {
+  try {
+    const pool = await sql.connect(config);
 
-		// Save the backup
-		fs.writeFileSync(backupFile, backupSQL, "utf8");
-		console.log(`Backup saved to ${backupFile}`);
+    // Disable FK constraints
+    await pool.request().query(`
+      EXEC sp_msforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all"
+    `);
 
-		// Drop tables
-		db.prepare(`PRAGMA foreign_keys = OFF`).run();
-		db.transaction(() => {
-			tables.forEach(({ name }) => {
-				db.prepare(`DROP TABLE IF EXISTS "${name}"`).run();
-			});
-		});
+    // Drop all allowed tables
+    for (const table of ALLOWED_TABLES) {
+      const dropQuery = `
+        IF OBJECT_ID('${table}', 'U') IS NOT NULL
+          DROP TABLE ${table};
+      `;
+      await pool.request().query(dropQuery);
+    }
 
-		db.prepare(`PRAGMA foreign_keys = ON`).run();
+    // Enable FK constraints
+    await pool.request().query(`
+      EXEC sp_msforeachtable "ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all"
+    `);
 
-		console.log("All tables deleted successfully.");
-		return backupFile; // Return the backup file path
-	} catch (error) {
-		console.error("Error deleting tables:", error);
-		return null;
-	}
-};
+    return true;
+  } catch (error) {
+    console.error("Error resetting all tables:", error);
+    return false;
+  }
+}
 
-const restoreTables = (backupFile) => {
-	try {
-		if (!fs.existsSync(backupFile)) {
-			console.log("Backup file not found:", backupFile);
-			return false;
-		}
+/**
+ * Restore tables from a SQL script file
+ * Note: This method assumes the script contains valid T-SQL for Azure SQL.
+ * @param {string} backupFilePath - Full path to SQL script backup file
+ * @returns {Promise<boolean>}
+ */
+const fs = require("fs").promises;
 
-		const backupSQL = fs.readFileSync(backupFile, "utf8");
-		const queries = backupSQL.split(";\n").filter((query) => query.trim());
+async function restoreTables(backupFilePath) {
+  try {
+    const fileContent = await fs.readFile(backupFilePath, "utf8");
+    const pool = await sql.connect(config);
 
-		db.transaction(() => {
-			queries.forEach((query) => {
-				db.prepare(query).run();
-			});
-		});
+    // Split by GO batch separators and filter empty
+    const batches = fileContent.split(/^\s*GO\s*$/im).filter(b => b.trim());
 
-		console.log(`Tables restored successfully from ${backupFile}`);
-		return true;
-	} catch (error) {
-		console.error("Error restoring tables:", error);
-		return false;
-	}
-};
+    for (const batch of batches) {
+      await pool.request().batch(batch);
+    }
 
-const recreateTables = () => {
-	try {
-		database.setupDb();
-		return true;
-	} catch {
-		return false;
-	}
-};
+    return true;
+  } catch (error) {
+    console.error("Error restoring tables:", error);
+    return false;
+  }
+}
 
-const readTable = (table) => {
-	const ALLOWED_TABLES = ["papers", "users", "categories", "author_papers", "tags", "paper_tags"];
+/**
+ * Recreate tables by running your DB setup script (or migration)
+ * Implement your table creation logic here
+ * @returns {Promise<boolean>}
+ */
+async function recreateTables() {
+  try {
+    const pool = await sql.connect(config);
 
-	if (!ALLOWED_TABLES.includes(table)){
-		throw new Error("Unrecognized table")
-	}
-	const stmt = db.prepare(`SELECT * FROM "${table}"`)
-	return stmt.all()
+    // Example: create categories table
+    const createCategories = `
+      CREATE TABLE categories (
+        category_id INT IDENTITY(1,1) PRIMARY KEY,
+        category NVARCHAR(255) NOT NULL UNIQUE
+      );
+    `;
+
+    // Run create tables queries (add others similarly)
+    await pool.request().query(createCategories);
+
+    // Add other table creation queries here
+
+    return true;
+  } catch (error) {
+    console.error("Error recreating tables:", error);
+    return false;
+  }
 }
 
 module.exports = {
-    resetTable,
-	resetAllTables,
-	recreateTables,
-	restoreTables,
-	readTable
+  resetTable,
+  readTable,
+  resetAllTables,
+  restoreTables,
+  recreateTables,
 };

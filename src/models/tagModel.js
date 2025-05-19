@@ -1,42 +1,48 @@
-const db = require("../config/dbConfig");
+const { poolConnect, pool } = require("../config/dbConfig");
 
-
-const createTag = (tag) => {
-	const stmt = db.prepare("INSERT INTO tags (tag) VALUES(?)");
-	return stmt.run(field, tag)
+const createTag = async (tag) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
+    request.input("tag", tag);
+    const result = await request.query(
+      `INSERT INTO tags (tag) VALUES (@tag);
+       SELECT SCOPE_IDENTITY() AS insertedId;`
+    );
+    return result.recordset[0].insertedId;
+  } catch (error) {
+    console.error("Error creating tag", error);
+    throw error;
+  }
 };
 
+// Get tags allows filtering tags
+const getTags = async (id, q) => {
+  try {
+    await poolConnect;
+    const request = pool.request();
 
-//Get tags allows filtering tags
-const getTags = (id, q) => {
-	let query = "SELECT * FROM tags WHERE 1=1"
-	const params = []
+    let query = "SELECT * FROM tags WHERE 1=1";
 
-	try {
-		// if (field) {
-		// 	query += " AND field = ?";
-		// 	params.push(field)
-		// }
+    if (id) {
+      query += " AND tag_id = @id";
+      request.input("id", id);
+    }
 
-		if (id) {
-			query += " AND tag_id = ?"
-			params.push(id)
-		}
+    if (q) {
+      query += " AND (tag LIKE @q)";
+      request.input("q", `%${q}%`);
+    }
 
-		if (q) {
-			query += " AND (tag LIKE ? OR field LIKE ?)"
-			params.push(`%${q}%`, `%${q}%`);
-		}
-
-		const stmt = db.prepare(query)
-		return stmt.all(...params)
-	}catch(error){
-		console.error("Error filtering tags", error)
-		return null;
-	}
-}
+    const result = await request.query(query);
+    return result.recordset;
+  } catch (error) {
+    console.error("Error filtering tags", error);
+    return null;
+  }
+};
 
 module.exports = {
-	createTag,
-	getTags
+  createTag,
+  getTags,
 };
