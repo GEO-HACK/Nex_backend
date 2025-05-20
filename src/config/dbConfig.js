@@ -16,6 +16,7 @@ const pool = new sql.ConnectionPool(config);
 const poolConnect = pool.connect(); // Initiate the connection
 
 module.exports = {
+  config,
   sql,
   pool,
   poolConnect,

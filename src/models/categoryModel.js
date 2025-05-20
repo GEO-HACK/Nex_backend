@@ -1,42 +1,49 @@
-const sql = require("mssql");
-const config = require("../config/dbConfig"); // your Azure SQL connection config
+const { pool, poolConnect } = require("../config/dbConfig");
 
-async function createCategory(category) {
-  const pool = await sql.connect(config);
-  const lower = category.toLowerCase();
-  const result = await pool.request()
-    .input('category', sql.VarChar, lower)
-    .query('INSERT INTO categories (category) VALUES (@category); SELECT SCOPE_IDENTITY() AS id;');
-  return result.recordset[0]; // inserted category id
-}
-
-async function readCategoryByName(name) {
-  const pool = await sql.connect(config);
-  const lower = name.toLowerCase();
-  const result = await pool.request()
-    .input('category', sql.VarChar, lower)
-    .query('SELECT category FROM categories WHERE category = @category');
-  return result.recordset[0];
-}
-
-async function readCategoryById(id) {
-  const pool = await sql.connect(config);
-  const result = await pool.request()
-    .input('id', sql.Int, id)
-    .query('SELECT category FROM categories WHERE category_id = @id');
-  return result.recordset[0];
-}
-
+// READ ALL categories
 async function readAllCategories() {
-  const pool = await sql.connect(config);
-  const result = await pool.request()
-    .query('SELECT category_id, category FROM categories');
-  return result.recordset;
+  try {
+    await poolConnect;
+    const result = await pool.request().query("SELECT category_id, category FROM categories");
+    return result.recordset;
+  } catch (error) {
+    console.error("❌ Error in readAllCategories:", error);
+    throw error;
+  }
+}
+
+// READ category by name
+async function readCategoryByName(categoryName) {
+  try {
+    await poolConnect;
+    const result = await pool
+      .request()
+      .input("category", categoryName)
+      .query("SELECT * FROM categories WHERE category = @category");
+
+    return result.recordset.length > 0 ? result.recordset[0] : null;
+  } catch (error) {
+    console.error("❌ Error in readCategoryByName:", error);
+    throw error;
+  }
+}
+
+// CREATE category
+async function createCategory(categoryName) {
+  try {
+    await poolConnect;
+    await pool
+      .request()
+      .input("category", categoryName)
+      .query("INSERT INTO categories (category) VALUES (@category)");
+  } catch (error) {
+    console.error("❌ Error in createCategory:", error);
+    throw error;
+  }
 }
 
 module.exports = {
-  createCategory,
-  readCategoryByName,
-  readCategoryById,
   readAllCategories,
+  readCategoryByName,
+  createCategory,
 };

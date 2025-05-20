@@ -1,49 +1,81 @@
-const { readCategoryByName, createCategory, readAllCategories } = require("../models/categoryModel");
+const {
+  readCategoryByName,
+  createCategory,
+  readAllCategories,
+} = require("../models/categoryModel");
 
-const getCategories = (req, res) => {
-	const categories = readAllCategories();
-	if (categories) {
-		return res.status(200).json(categories);
-	}
-	return res.status(404).json({ message: "Not Found: No categories found" });
+// GET /categories - Retrieve all categories
+const getCategories = async (req, res) => {
+	console.log("Fetching all categories...");
+  try {
+    const categories = await readAllCategories();
+
+    if (categories && categories.length > 0) {
+      // Return clean JSON structure
+      return res.status(200).json({
+        message: "Categories fetched successfully",
+        total: categories.length,
+        data: categories,
+      });
+
+    }
+	console.log("this are the categories", categories);	
+
+    return res.status(404).json({ message: "No categories found" });
+  } catch (error) {
+    console.error("Error fetching categories:", error.message);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
-const addCategories = (req, res) => {
-	const { categories } = req.body;
-	// return res.status(403).json({ message: "Forbidden: cannot add new categories" });
+// POST /categories - Add one or more categories
+const addCategories = async (req, res) => {
+  try {
+    const { categories, category } = req.body;
 
-	let successfullyAddedCategories = [];
-	let failed = []
+    // Multiple category addition
+    if (Array.isArray(categories)) {
+      const successfullyAdded = [];
+      const failed = [];
 
-	if (Array.isArray(categories)) {
-		categories.forEach((category) => {
-			if (readCategoryByName(category)) {
-				console.warn(`category ${category} exists`);
-				failed.push(category)
-			} else if (createCategory(category)) {
-				successfullyAddedCategories.push(category);
-			}
-		});
+      for (const cat of categories) {
+        const exists = await readCategoryByName(cat);
+        if (exists) {
+          failed.push(cat);
+        } else {
+          await createCategory(cat);
+          successfullyAdded.push(cat);
+        }
+      }
 
-		return res.status(200).json({
-			message: "task complete",
-			num_of_failed: categories.length - successfullyAddedCategories.length,
-			failed: failed
-		});
-	}
+      return res.status(200).json({
+        message: "Batch category add complete",
+        successfullyAdded,
+        failedCount: failed.length,
+        failed,
+      });
+    }
 
-	if (readCategoryByName(category)) {
-		return res.status(409).json({ message: "Category exists" });
-	}
+    // Single category addition
+    if (category) {
+      const exists = await readCategoryByName(category);
+      if (exists) {
+        return res.status(409).json({ message: "Category already exists" });
+      }
 
-	if (createCategory(category)) {
-		return res.status(200).json({ message: "New category added" });
-	}
+      await createCategory(category);
+      return res.status(201).json({ message: "Category created successfully" });
+    }
 
-	return res.status(500).json({ message: "Failed to add new category" });
+    return res.status(400).json({ message: "No category data provided" });
+
+  } catch (error) {
+    console.error("Error adding category:", error.message);
+    return res.status(500).json({ message: "Failed to add category" });
+  }
 };
 
 module.exports = {
-	getCategories,
-	addCategories,
+  getCategories,
+  addCategories,
 };
