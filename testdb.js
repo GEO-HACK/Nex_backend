@@ -1,19 +1,16 @@
 const { poolConnect, pool } = require("./src/config/dbConfig");
 
-async function testDb() {
+async function fetchPapers() {
   try {
-    await poolConnect;
-    const request = pool.request();
+    await poolConnect; // ensure pool has connected
 
-    // Read from categories table
-    const result = await request.query(`
-      SELECT category_id, category FROM categories;
-    `);
+    const result = await pool.request().query('SELECT * FROM papers');
 
-    console.log("✅ Categories in DB:\n", result.recordset);
+    console.log('Fetched papers:', result.recordset);
+    return result.recordset;
   } catch (err) {
-    console.error("❌ Error reading from categories table:", err);
+    console.error('Error fetching papers:', err);
   }
 }
 
-testDb();
+fetchPapers();
