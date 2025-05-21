@@ -13,8 +13,7 @@ const getCategories = async (req, res) => {
     if (categories && categories.length > 0) {
       // Return clean JSON structure
       return res.status(200).json({
-        message: "Categories fetched successfully",
-        total: categories.length,
+      
         data: categories,
       });
 
