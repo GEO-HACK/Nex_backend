@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const userModel = require("../models/userModel");
 
-// ✅ Asynchronous register function
+//  Asynchronous register function
 const register = async (req, res) => {
 	try {
 		let { institution, username, fname, lname, email, password } = req.body;
@@ -23,16 +23,34 @@ const register = async (req, res) => {
 		// Hash password
 		const hashedPassword = await bcrypt.hash(password, 10);
 
-		// Create user
-		userModel.createUser(institution, fname, lname, username, email, role, hashedPassword);
-		res.status(201).json({ message: "User registered successfully" });
+		// Create user and await result
+		const newUser = await userModel.createUser(institution, fname, lname, username, email, role, hashedPassword);
+
+		// Generate JWT token for the new user
+		const token = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+		// Return user details and token
+		res.status(201).json({
+			message: "User registered successfully",
+			token,
+			user: {
+				institution: newUser.institution_id,
+				id: newUser.id,
+				fname: newUser.fname,
+				lname: newUser.lname,
+				username: newUser.username,
+				email: newUser.email,
+				role: newUser.role,
+			},
+		});
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ message: "Server error" });
 	}
 };
 
-// ✅ Asynchronous registerAdmin function
+
+//  Asynchronous registerAdmin function
 const registerAdmin = async (req, res) => {
 	try {
 		let { institution, username, fname, lname, email, password } = req.body;
@@ -64,7 +82,7 @@ const registerAdmin = async (req, res) => {
 	}
 };
 
-// ✅ Improved login function
+//  Improved login function
 const login = async (req, res) => {
 	try {
 		const { email, password } = req.body;
@@ -102,7 +120,7 @@ const login = async (req, res) => {
 	}
 };
 
-// ✅ Logout function (Handled client-side for JWT authentication)
+//  Logout function (Handled client-side for JWT authentication)
 const logout = (req, res) => {
 	// JWT-based logout is handled on the client-side by removing the token
 	res.status(200).json({ message: "Logout successful. Please remove token on client-side." });

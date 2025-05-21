@@ -33,8 +33,9 @@ const joinInstitution = async (institutionName) => {
 // Create user with institution handling
 const createUser = async (
   institutionName,
-  lname,
+  
   fname,
+  lname,
   username,
   email,
   role,
