@@ -1,46 +1,38 @@
-const { poolConnect, pool } = require("../config/dbConfig");
+// tagsModel_mongo.js
+const mongoose = require("mongoose");
 
-const createTag = async (tag) => {
+const tagSchema = new mongoose.Schema({
+  tag: { type: String, required: true, unique: true },
+});
+
+const Tag = mongoose.model("Tag", tagSchema);
+
+async function createTag(tag) {
   try {
-    await poolConnect;
-    const request = pool.request();
-    request.input("tag", tag);
-    const result = await request.query(
-      `INSERT INTO tags (tag) VALUES (@tag);
-       SELECT SCOPE_IDENTITY() AS insertedId;`
-    );
-    return result.recordset[0].insertedId;
+    const newTag = new Tag({ tag });
+    await newTag.save();
+    return newTag._id;
   } catch (error) {
     console.error("Error creating tag", error);
     throw error;
   }
-};
+}
 
-// Get tags allows filtering tags
-const getTags = async (id, q) => {
+async function getTags(id, q) {
   try {
-    await poolConnect;
-    const request = pool.request();
-
-    let query = "SELECT * FROM tags WHERE 1=1";
-
+    const filter = {};
     if (id) {
-      query += " AND tag_id = @id";
-      request.input("id", id);
+      filter._id = id;
     }
-
     if (q) {
-      query += " AND (tag LIKE @q)";
-      request.input("q", `%${q}%`);
+      filter.tag = { $regex: q, $options: "i" };
     }
-
-    const result = await request.query(query);
-    return result.recordset;
+    return await Tag.find(filter);
   } catch (error) {
     console.error("Error filtering tags", error);
     return null;
   }
-};
+}
 
 module.exports = {
   createTag,

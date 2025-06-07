@@ -1,41 +1,46 @@
-const { pool, poolConnect } = require("../config/dbConfig");
+// models/categoryModel.js
 
-// READ ALL categories
+const mongoose = require("mongoose");
+
+const categorySchema = new mongoose.Schema(
+  {
+    category: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const Category = mongoose.model("Category", categorySchema);
+
+// CRUD Logic in same file
 async function readAllCategories() {
   try {
-    await poolConnect;
-    const result = await pool.request().query("SELECT category_id, category FROM categories");
-    return result.recordset;
+    return await Category.find({}, "_id category").lean();
   } catch (error) {
     console.error("❌ Error in readAllCategories:", error);
     throw error;
   }
 }
 
-// READ category by name
 async function readCategoryByName(categoryName) {
   try {
-    await poolConnect;
-    const result = await pool
-      .request()
-      .input("category", categoryName)
-      .query("SELECT * FROM categories WHERE category = @category");
-
-    return result.recordset.length > 0 ? result.recordset[0] : null;
+    return await Category.findOne({ category: categoryName }).lean();
   } catch (error) {
     console.error("❌ Error in readCategoryByName:", error);
     throw error;
   }
 }
 
-// CREATE category
 async function createCategory(categoryName) {
   try {
-    await poolConnect;
-    await pool
-      .request()
-      .input("category", categoryName)
-      .query("INSERT INTO categories (category) VALUES (@category)");
+    const category = new Category({ category: categoryName });
+    await category.save();
   } catch (error) {
     console.error("❌ Error in createCategory:", error);
     throw error;
@@ -43,6 +48,7 @@ async function createCategory(categoryName) {
 }
 
 module.exports = {
+  Category,
   readAllCategories,
   readCategoryByName,
   createCategory,

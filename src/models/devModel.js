@@ -1,147 +1,90 @@
-const sql = require("mssql");
-const config = require("../config/dbConfig"); // Your Azure SQL config here
+// utils/dbUtils.js (MongoDB version)
 
-const ALLOWED_TABLES = ["papers", "users", "categories", "author_papers", "tags", "paper_tags"];
-
-/**
- * Drops a table if it exists
- * @param {string} table - Table name to drop
- * @returns {Promise<boolean>}
- */
-async function resetTable(table) {
-  if (!ALLOWED_TABLES.includes(table)) {
-    throw new Error("Unrecognized table");
-  }
-
-  try {
-    const pool = await sql.connect(config);
-    const dropQuery = `
-      IF OBJECT_ID('${table}', 'U') IS NOT NULL
-        DROP TABLE ${table};
-    `;
-    await pool.request().query(dropQuery);
-    return true;
-  } catch (error) {
-    console.error("Error resetting table:", error);
-    return false;
-  }
-}
-
-/**
- * Reads all rows from a table (allowed only)
- * @param {string} table - Table name
- * @returns {Promise<Array>}
- */
-async function readTable(table) {
-  if (!ALLOWED_TABLES.includes(table)) {
-    throw new Error("Unrecognized table");
-  }
-
-  try {
-    const pool = await sql.connect(config);
-    const result = await pool.request().query(`SELECT * FROM ${table}`);
-    return result.recordset;
-  } catch (error) {
-    console.error("Error reading table:", error);
-    throw error;
-  }
-}
-
-/**
- * Resets (drops) all allowed tables
- * WARNING: This deletes all tables and data.
- * @returns {Promise<boolean>}
- */
-async function resetAllTables() {
-  try {
-    const pool = await sql.connect(config);
-
-    // Disable FK constraints
-    await pool.request().query(`
-      EXEC sp_msforeachtable "ALTER TABLE ? NOCHECK CONSTRAINT all"
-    `);
-
-    // Drop all allowed tables
-    for (const table of ALLOWED_TABLES) {
-      const dropQuery = `
-        IF OBJECT_ID('${table}', 'U') IS NOT NULL
-          DROP TABLE ${table};
-      `;
-      await pool.request().query(dropQuery);
-    }
-
-    // Enable FK constraints
-    await pool.request().query(`
-      EXEC sp_msforeachtable "ALTER TABLE ? WITH CHECK CHECK CONSTRAINT all"
-    `);
-
-    return true;
-  } catch (error) {
-    console.error("Error resetting all tables:", error);
-    return false;
-  }
-}
-
-/**
- * Restore tables from a SQL script file
- * Note: This method assumes the script contains valid T-SQL for Azure SQL.
- * @param {string} backupFilePath - Full path to SQL script backup file
- * @returns {Promise<boolean>}
- */
+const mongoose = require("mongoose");
 const fs = require("fs").promises;
 
-async function restoreTables(backupFilePath) {
+const Category = require("../models/categoryModel");
+// import other models like User, Paper, etc. as needed
+
+const ALLOWED_COLLECTIONS = {
+  categories: Category,
+  // users: User,
+  // papers: Paper,
+  // tags: Tag,
+  // paper_tags: PaperTag,
+  // etc.
+};
+
+/**
+ * Drops a MongoDB collection if allowed
+ */
+async function resetCollection(collectionName) {
+  const Model = ALLOWED_COLLECTIONS[collectionName];
+  if (!Model) throw new Error("Unrecognized collection");
+
   try {
-    const fileContent = await fs.readFile(backupFilePath, "utf8");
-    const pool = await sql.connect(config);
-
-    // Split by GO batch separators and filter empty
-    const batches = fileContent.split(/^\s*GO\s*$/im).filter(b => b.trim());
-
-    for (const batch of batches) {
-      await pool.request().batch(batch);
-    }
-
+    await Model.deleteMany({});
     return true;
-  } catch (error) {
-    console.error("Error restoring tables:", error);
+  } catch (err) {
+    console.error("Error resetting collection:", err);
     return false;
   }
 }
 
 /**
- * Recreate tables by running your DB setup script (or migration)
- * Implement your table creation logic here
- * @returns {Promise<boolean>}
+ * Reads all documents from a collection
  */
-async function recreateTables() {
+async function readCollection(collectionName) {
+  const Model = ALLOWED_COLLECTIONS[collectionName];
+  if (!Model) throw new Error("Unrecognized collection");
+
   try {
-    const pool = await sql.connect(config);
+    return await Model.find().lean();
+  } catch (err) {
+    console.error("Error reading collection:", err);
+    throw err;
+  }
+}
 
-    // Example: create categories table
-    const createCategories = `
-      CREATE TABLE categories (
-        category_id INT IDENTITY(1,1) PRIMARY KEY,
-        category NVARCHAR(255) NOT NULL UNIQUE
-      );
-    `;
+/**
+ * Drops all collections
+ */
+async function resetAllCollections() {
+  try {
+    for (const name in ALLOWED_COLLECTIONS) {
+      await ALLOWED_COLLECTIONS[name].deleteMany({});
+    }
+    return true;
+  } catch (err) {
+    console.error("Error resetting all collections:", err);
+    return false;
+  }
+}
 
-    // Run create tables queries (add others similarly)
-    await pool.request().query(createCategories);
+/**
+ * Restore from a JSON file backup
+ * Format: { categories: [...], users: [...], etc. }
+ */
+async function restoreCollectionsFromJSON(filePath) {
+  try {
+    const json = await fs.readFile(filePath, "utf8");
+    const data = JSON.parse(json);
 
-    // Add other table creation queries here
+    for (const [key, docs] of Object.entries(data)) {
+      if (!ALLOWED_COLLECTIONS[key]) continue;
+      await ALLOWED_COLLECTIONS[key].insertMany(docs);
+    }
 
     return true;
-  } catch (error) {
-    console.error("Error recreating tables:", error);
+  } catch (err) {
+    console.error("Error restoring from JSON:", err);
     return false;
   }
 }
 
 module.exports = {
-  resetTable,
-  readTable,
-  resetAllTables,
-  restoreTables,
-  recreateTables,
+  resetCollection,
+  resetAllCollections,
+  readCollection,
+  restoreCollectionsFromJSON,
 };

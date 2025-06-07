@@ -3,7 +3,8 @@ const app = express();
 const cors = require("cors");
 const dotenv = require("dotenv");
 const port = 8080;
-const database = require("./src/config/dbSetupConfig");
+
+const connectMongo = require("./src/config/mongoConfig");
 
 dotenv.config(); //process.env available
 
@@ -28,7 +29,7 @@ app.use("/api/users", userRoutes);
 app.use("/dev", devRoutes);
 
 // setup db
-database.setupDb();
+connectMongo();
 
 app.get("/api", (req, res) => {
 	const message = req.query.message;
@@ -40,6 +41,7 @@ app.get("/api", (req, res) => {
 });
 
 const path = require("path");
+const { connect } = require("http2");
 
 // Serve static files from the uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "src/uploads")));
