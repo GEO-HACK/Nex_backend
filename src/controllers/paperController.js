@@ -1,6 +1,6 @@
 const upload = require("../config/multerConfig");
 const paperModel = require("../models/paperModel");
-const { poolConnect, pool } = require("../config/dbConfig");
+
 
 const uploadPaper = async (req, res) => {
 	try {
@@ -104,15 +104,16 @@ const updateLocalPaper = async (req, res) => {
 
 const getPapers = async (req, res) => {
   try {
-    await poolConnect; // ensure DB connection is ready
+
 
     // Query to get all papers from the papers table
-    const result = await pool.request().query("SELECT * FROM papers");
+     const papers = await paperModel.getPapers();
 
+	 
     // Send the fetched papers in JSON format
     return res.status(200).json({
-      data: result.recordset,
-      count: result.recordset.length,
+      data: papers.recordset,
+    //   count: papers.recordset.length,
     });
   } catch (error) {
     console.error("Error fetching papers:", error);
