@@ -1,52 +1,35 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
+require('dotenv').config(); 
 
-// Category Schema
-const categorySchema = new mongoose.Schema(
-  {
-    category: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
+const paperSchema = new mongoose.Schema({
+  category_id: Number,
+  publisher_id: Number,
+  paper_name: String,
+  file_url: String,
+  description: String,
+  meta: {
+    pages: Number,
+    published: Number,
   },
-  {
-    timestamps: true,
-  }
-);
+  tags: [String],
+});
 
-const Category = mongoose.model("Category", categorySchema);
+const Paper = mongoose.model('Paper', paperSchema);
 
-// Sample categories
-const categories = [
-  { category: "Data Science" },
-  { category: "Artificial Intelligence" },
-  { category: "Cybersecurity" },
-  { category: "Web Development" },
-  { category: "Cloud Computing" },
-  { category: "DevOps" },
-  { category: "Networking" },
-  { category: "Natural Language Processing" },
-];
-
-async function insertTestCategories() {
+async function fetchAllPapers() {
   try {
-    await mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/testdb");
+    await mongoose.connect(process.env.MONGO_URI,{
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }); // Or hardcode your URI
 
-    // Optional: Clear old data
-    // await Category.deleteMany({});
-
-    const result = await Category.insertMany(categories, { ordered: false });
-    console.log("✅ Categories inserted successfully:", result);
+    const papers = await Paper.find({});
+    console.log("📄 All Papers:", papers);
     process.exit();
-  } catch (error) {
-    if (error.code === 11000) {
-      console.error("⚠️ Some categories already exist. Skipping duplicates.");
-    } else {
-      console.error("❌ Error inserting categories:", error);
-    }
+  } catch (err) {
+    console.error("❌ Error fetching papers:", err);
     process.exit(1);
   }
 }
 
-insertTestCategories();
+fetchAllPapers();

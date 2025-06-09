@@ -106,15 +106,11 @@ const getPapers = async (req, res) => {
   try {
 
 
-    // Query to get all papers from the papers table
      const papers = await paperModel.getPapers();
+	 
 
 	 
-    // Send the fetched papers in JSON format
-    return res.status(200).json({
-      data: papers.recordset,
-     // count: papers.recordset.length,
-    });
+    return res.status(200).json(papers);
   } catch (error) {
     console.error("Error fetching papers:", error);
     return res.status(500).json({ message: "Failed to fetch papers" });

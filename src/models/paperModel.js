@@ -1,5 +1,6 @@
 // papersModel_mongo.js
 const mongoose = require("mongoose");
+const connectMongo = require("../config/mongoConfig");
 
 // ----- SCHEMA DEFINITIONS -----
 
@@ -99,8 +100,9 @@ async function getPaperById(paper_id) {
   }
 }
 
-async function getPapers(filters = {}, offset = 0, limit = 30) {
+async function getPapers (filters = {}, offset = 0, limit = 30,req,res) {
   try {
+    await connectMongo(); // Ensure MongoDB connection is established
     const query = {};
 
     if (filters.id) query._id = filters.id;
@@ -116,11 +118,13 @@ async function getPapers(filters = {}, offset = 0, limit = 30) {
     if (filters.author_id) {
       query.coauthors = filters.author_id;
     }
-
-    return await Paper.find(query)
+ const papers = await Paper.find(query)
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit);
+  return papers;
+
+
   } catch (err) {
     throw new Error(`Error fetching papers: ${err.message}`);
   }
