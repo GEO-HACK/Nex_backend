@@ -113,7 +113,7 @@ const getPapers = async (req, res) => {
     // Send the fetched papers in JSON format
     return res.status(200).json({
       data: papers.recordset,
-    //   count: papers.recordset.length,
+     // count: papers.recordset.length,
     });
   } catch (error) {
     console.error("Error fetching papers:", error);

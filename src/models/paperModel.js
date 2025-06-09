@@ -101,7 +101,7 @@ async function getPaperById(paper_id) {
 
 async function getPapers(filters = {}, offset = 0, limit = 30) {
   try {
-    const query = { deleted: false };
+    const query = {};
 
     if (filters.id) query._id = filters.id;
     if (filters.category) query.category_id = filters.category;
