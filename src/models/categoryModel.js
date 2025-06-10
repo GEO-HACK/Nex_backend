@@ -21,7 +21,7 @@ const Category = mongoose.model("Category", categorySchema);
 // CRUD Logic in same file
 async function readAllCategories() {
   try {
-    return await Category.find({}, "_id category").lean();
+    return await Category.find({}).lean();
   } catch (error) {
     console.error("❌ Error in readAllCategories:", error);
     throw error;

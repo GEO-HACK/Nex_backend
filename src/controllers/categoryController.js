@@ -15,10 +15,10 @@ const getCategories = async (req, res) => {
       return res.status(200).json({
       
         data: categories,
+       
       });
 
-    }
-	console.log("this are the categories", categories);	
+    }	console.log("this are the categories", categories);	
 
     return res.status(404).json({ message: "No categories found" });
   } catch (error) {
