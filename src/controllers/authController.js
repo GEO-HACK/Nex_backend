@@ -5,7 +5,7 @@ const userModel = require("../models/userModel");
 //  Asynchronous register function
 const register = async (req, res) => {
 	try {
-		let { institution, username, fname, lname, email, password } = req.body;
+		let { institutionName, username, fname, lname, email, password } = req.body;
 		const role = "Author";
 
 		if (!fname) return res.status(400).json({ error: "fname is required" });
@@ -24,7 +24,7 @@ const register = async (req, res) => {
 		const hashedPassword = await bcrypt.hash(password, 10);
 
 		// Create user and await result
-		const newUser = await userModel.createUser(institution, fname, lname, username, email, role, hashedPassword);
+		const newUser = await userModel.createUser(institutionName, fname, lname, username, email, role, hashedPassword);
 
 		// Generate JWT token for the new user
 		const token = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
@@ -34,7 +34,7 @@ const register = async (req, res) => {
 			message: "User registered successfully",
 			token,
 			user: {
-				institution: newUser.institution_id,
+				institutionName: newUser.institution_id,
 				id: newUser.id,
 				fname: newUser.fname,
 				lname: newUser.lname,

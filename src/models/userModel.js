@@ -1,6 +1,11 @@
 // userModel_mongo.js
 const mongoose = require("mongoose");
 
+
+const bcrypt = require('bcrypt');
+
+
+
 // Institution schema and model
 const institutionSchema = new mongoose.Schema({
   institution_name: { type: String, required: true, unique: true },
@@ -16,24 +21,24 @@ const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   role: { type: String, required: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true }, // Store hashed password!
+  isActive: { type: Boolean, default: true },
+  isVerified: { type: Boolean, default: false },
+}, { timestamps: true });
+
+// Hash password before saving
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
 });
 
-const User = mongoose.model("User", userSchema);
+// Compare password
+userSchema.methods.comparePassword = function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
-// Helper: Find or create institution, return institution's ObjectId
-async function joinInstitution(institutionName) {
-  try {
-    let institution = await Institution.findOne({ institution_name: institutionName });
-    if (!institution) {
-      institution = new Institution({ institution_name: institutionName });
-      await institution.save();
-    }
-    return institution._id;
-  } catch (error) {
-    throw new Error(`Error fetching institution id: ${error.message}`);
-  }
-}
+const User = mongoose.model("User", userSchema);
 
 // Create user with institution handling
 async function createUser(institutionName, fname, lname, username, email, role, password) {
@@ -100,10 +105,24 @@ async function getAuthors(query, limit = 10) {
   }
 }
 
+// Add this function before your module.exports
+async function joinInstitution(institutionName) {
+  try {
+    let institution = await Institution.findOne({ institution_name: institutionName });
+    if (!institution) {
+      institution = new Institution({ institution_name: institutionName });
+      await institution.save();
+    }
+    return institution._id;
+  } catch (error) {
+    throw new Error(`Error joining institution: ${error.message}`);
+  }
+}
+
 module.exports = {
   createUser,
   readUserByMail,
   readUserById,
   getAuthors,
-  joinInstitution,
+  joinInstitution, // Now this will be defined!
 };
