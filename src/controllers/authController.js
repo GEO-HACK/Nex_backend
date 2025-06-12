@@ -20,11 +20,11 @@ const register = async (req, res) => {
 			return res.status(400).json({ message: "User email already exists" });
 		}
 
-		// Hash password
-		const hashedPassword = await bcrypt.hash(password, 10);
+	
 
-		// Create user and await result
-		const newUser = await userModel.createUser(institutionName, fname, lname, username, email, role, hashedPassword);
+		// Create user and await result ensuring that i hash the password only once in the model to avoif mismatch
+		
+		const newUser = await userModel.createUser(institutionName, fname, lname, username, email, role, password);
 
 		// Generate JWT token for the new user
 		const token = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
