@@ -26,7 +26,7 @@ const filterAuthors = async (req, res) => {
 
         console.log("Name queried: ", name)
         console.log("Limit given: ", limit)
-        const authors = userModel.getAuthors(name, limit)
+        const authors =await  userModel.getAuthors(name, limit)
         if (!authors || authors.length <= 0){
             return res.status(404).json({message: "not found"})
         }

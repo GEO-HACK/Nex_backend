@@ -94,7 +94,7 @@ async function updatePaper(paper_id, fields = {}) {
 
 async function getPaperById(paper_id) {
   try {
-    return await Paper.findOne({ _id: paper_id, deleted: false });
+    return await Paper.findOne({ _id:paper_id, deleted: false });
   } catch (err) {
     throw new Error(`Error fetching paper by ID: ${err.message}`);
   }
