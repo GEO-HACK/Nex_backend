@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema({
 
 const paperSchema = new mongoose.Schema(
   {
-    category_id: mongoose.Schema.Types.ObjectId,
+    paper_id:Number,
+    category_id: Number,
     publisher_id: mongoose.Schema.Types.ObjectId,
     paper_name: String,
     file_url: String,
@@ -31,9 +32,10 @@ const Paper = mongoose.model("Paper", paperSchema);
 
 // ----- DATA ACCESS FUNCTIONS -----
 
-async function createPaper(category_id, publisher_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []) {
+async function createPaper(paper_id,category_id, publisher_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []) {
   try {
     const paper = new Paper({
+      paper_id,
       category_id,
       publisher_id,
       paper_name,
@@ -45,7 +47,7 @@ async function createPaper(category_id, publisher_id, paper_name, file_url, desc
     });
 
     await paper.save();
-    const paper_id = paper._id;
+    const paper_id = paper_id;
 
     const allAuthors = new Set([publisher_id.toString(), ...coauthors.map(String)]);
     for (const author of allAuthors) {
@@ -92,9 +94,9 @@ async function updatePaper(paper_id, fields = {}) {
   }
 }
 
-async function getPaperById(paper_id) {
+async function getPaperById(_id) {
   try {
-    return await Paper.findOne({ _id:paper_id, deleted: false });
+    return await Paper.findOne({ _id:_id, deleted: false });
   } catch (err) {
     throw new Error(`Error fetching paper by ID: ${err.message}`);
   }
@@ -122,6 +124,10 @@ async function getPapers (filters = {}, offset = 0, limit = 30,req,res) {
       .sort({ createdAt: -1 })
       .skip(offset)
       .limit(limit);
+
+ 
+
+       
   return papers;
 
 
