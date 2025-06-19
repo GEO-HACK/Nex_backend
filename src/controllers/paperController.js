@@ -1,72 +1,62 @@
 const upload = require("../config/multerConfig");
 const paperModel = require("../models/paperModel");
+const User = require("../models/userModel");
 
 
-const uploadPaper = async (req, res) => {
-	try {
-		if (!req.file) {
-			return res.status(400).json({ error: "No file attached" });
-		}
+// In paperController.js
 
-		const fileurl = req.file.location;
-		console.log("file upload location: ", fileurl);
+const createPaper = async (req, res) => {
+  try {
+    // Parse fields from the request body
+    const {
+      paper_name,
+      description,
+      category_id,
+      meta,
+      tags = [],
+      coauthors = [],
+    } = req.body;
 
-		return res.status(200).json({
-			message: "paper uploaded successfully",
-			fileurl: fileurl,
-		});
-	} catch (err) {
-		console.error("Error in uploadPaper:", err);
-		return res.status(500).json({ error: "Internal server error" });
-	}
+    // Parse arrays/objects if sent as strings
+    const parsedTags = typeof tags === "string" ? JSON.parse(tags) : tags;
+    const parsedCoauthors = typeof coauthors === "string" ? JSON.parse(coauthors) : coauthors;
+    const parsedMeta = typeof meta === "string" && meta ? JSON.parse(meta) : meta;
+
+    // Handle file upload
+    let file_url = req.file ? `/uploads/${req.file.filename}` : req.body.file_url || null;
+
+    // Get publisher_id from authenticated user
+    const publisher_id = req.user.id;
+
+    // Call the model's createPaper function
+    const paper = await paperModel.createPaper({
+      category_id,
+      paper_name,
+      file_url,
+      description,
+      meta: parsedMeta,
+      tags: parsedTags,
+      coauthors: parsedCoauthors,
+      publisher_id, // Pass publisher_id explicitly
+    });
+
+    res.status(201).json({
+      message: "Paper created successfully",
+      paper,
+    });
+  } catch (error) {
+    console.error("Error creating paper:", error);
+    res.status(500).json({
+      message: "Failed to create paper",
+      error: error.message,
+    });
+  }
 };
 
-const localUploadPaper = async (req, res) => {
-	try {
-		if (!req.file) {
-			return res.status(400).json({ error: "No file attached" });
-		}
 
-		const baseUrl = "http://localhost:8080";
-		const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
-		const fileName = req.body.name;
-		const category = req.body.category;
-		const publisher = req.body.publisher;
-		let coauthors = req.body.coauthors || "[]";
-		let tags = req.body.tags || "[]";
-		const description = req.body.description;
-		const meta = req.body.meta;
+	
 
-		console.log(req.body);
 
-		try {
-			if (typeof tags === "string") tags = JSON.parse(tags);
-			if (typeof coauthors === "string") coauthors = JSON.parse(coauthors);
-		} catch (err) {
-			return res.status(400).json({ error: "Error parsing tags or coauthors" });
-		}
-
-		if (!fileName) return res.status(400).json({ error: "expected file name in the body as: name:<file_name>" });
-		if (!category) return res.status(400).json({ error: "expected file category in the body as: category:<1>" });
-		if (!description) return res.status(400).json({ error: "expected file description in the body as: description:<file_description>" });
-		if (!publisher) return res.status(400).json({ error: "expected file publisher in the body as: publisher:<1>" });
-		if (!Array.isArray(tags)) return res.status(400).json({ error: "tags should be an array" });
-		if (!Array.isArray(coauthors)) return res.status(400).json({ error: "coauthors should be an array" });
-		if (tags.length > 10) return res.status(400).json({ error: "Maximum number of tags associatable to a paper exceeded" });
-
-		const paper = await paperModel.createPaper(category, publisher, fileName, fileUrl, description, meta, tags, coauthors);
-
-		if (!paper) {
-			console.error("Paper creation failed: ", paper);
-			return res.status(500).json({ error: "Error occurred creating file" });
-		} else {
-			return res.status(200).json({ message: "Success", paper: paper });
-		}
-	} catch (err) {
-		console.error("Error in localUploadPaper:", err);
-		return res.status(500).json({ error: "Internal server error" });
-	}
-};
 
 const updateLocalPaper = async (req, res) => {
 	if (!req.body.id) return res.status(400).json({ error: "Paper id not provided" });
@@ -182,8 +172,7 @@ const getUserPapers = async (req, res) => {
 };
 
 module.exports = {
-	uploadPaper,
-	localUploadPaper,
+	createPaper,
 	updateLocalPaper,
 	getPapers,
 	getPaperById,

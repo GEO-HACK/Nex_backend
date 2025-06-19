@@ -7,36 +7,14 @@ const { upload, localstore } = require("../config/multerConfig");
 // const multer = require("multer");
 
 router.post(
-	"/",
-	verifyToken,
-	(req, res, next) => {
-		console.log("Request reached multer, before upload");
-		console.log("Body: ", req.body);
-		console.log("Files: ", req.files);
-		next();
-	},
-	checkRole(["admin", "author"]),
-	(req, res) => {
-		upload.single("file")(req, res, (err) => {
-			if (err) {
-				console.error("Multer Error: ", err);
-				return res.status(400).json({ error: "File upload failed", details: err.message });
-			}
-			console.log("Multer Executed");
-			console.log("received file: ", req.file);
-
-			if (!req.file) {
-				return res.status(400).json({ error: "No file uploaded" });
-			}
-
-			res.status(200).json({ message: "Upload successful" });
-		});
-	},
-	paperController.uploadPaper
-); // Upload paper
+  "/",
+  verifyToken,   
+  upload.single("file"), // "file" is the field name for the uploaded file
+  paperController.createPaper
+);
 
 //TODO: Check if all required fields are filled before accepting upload
-router.post("/local", verifyToken, ensurePathExists("../uploads"), localstore.single("file"), paperController.localUploadPaper); //upload paper locally
+router.post("/local", verifyToken, ensurePathExists("../uploads"), localstore.single("file"), paperController.createPaper); //upload paper locally
 router.get("", paperController.getPapers);
 router.get("/:id", paperController.getPaperById);
 
@@ -49,5 +27,5 @@ router.delete("/:id", verifyToken, checkRole(["admin", "author"]), paperControll
 
 
 //get papers according to user id
-router.get("/user", verifyToken, paperController.getUserPapers);
+router.get("/user/:userId",paperController.getUserPapers);
 module.exports = router;

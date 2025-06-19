@@ -12,16 +12,17 @@ const userSchema = new mongoose.Schema({
 
 const paperSchema = new mongoose.Schema(
   {
-    paper_id:Number,
-    category_id: Number,
-    publisher_id: mongoose.Schema.Types.ObjectId,
-    paper_name: String,
-    file_url: String,
-    description: String,
-    meta: mongoose.Schema.Types.Mixed,
-    tags: [String],
-    coauthors: [mongoose.Schema.Types.ObjectId],
-    deleted: { type: Boolean, default: false },
+    paper_name: { type: String, required: true },
+    description: { type: String, required: true },
+    file_url: { type: String, required: true },
+    category_id: { type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true },
+    publisher_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    meta: { type: Object, default: null }, // Store metadata
+    tags: { type: [String], default: [] }, // Store tags as an array
+    coauthors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] }], // Store coauthors as an array of User IDs
+    deleted: { type: Boolean, default: false }, 
+
+
   },
   { timestamps: true }
 );
@@ -30,12 +31,17 @@ const User = mongoose.models.User || mongoose.model('User', userSchema);
 
 const Paper = mongoose.model("Paper", paperSchema);
 
+
 // ----- DATA ACCESS FUNCTIONS -----
 
-async function createPaper(paper_id,category_id, publisher_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []) {
+async function createPaper({category_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []},req, res) {
   try {
+
+  
+
+    const publisher_id = req.user.id
+    console.log("Publisher ID:", publisher_id);
     const paper = new Paper({
-      paper_id,
       category_id,
       publisher_id,
       paper_name,
@@ -47,7 +53,7 @@ async function createPaper(paper_id,category_id, publisher_id, paper_name, file_
     });
 
     await paper.save();
-    const paper_id = paper_id;
+  
 
     const allAuthors = new Set([publisher_id.toString(), ...coauthors.map(String)]);
     for (const author of allAuthors) {
