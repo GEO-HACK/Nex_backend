@@ -2,7 +2,7 @@ const userModel = require("../models/userModel");
 
 const getUser = async (req, res) => {
 	try {
-		const user = await userModel.readUserById(req.user.id);
+		const user = await userModel.readUserById(req.user._id);
 		if (!user) {
 			return res.status(404).json({ message: "User does not exist" });
 		}

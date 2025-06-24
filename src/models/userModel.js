@@ -75,7 +75,7 @@ async function readUserByMail(email) {
 // Read user by id (with limited fields)
 async function readUserById(id) {
   try {
-    return await User.findById(id, "fname lname email role").lean();
+    return await User.findById(id).lean();
   } catch (error) {
     console.error("Error reading user by id", error);
     return null;

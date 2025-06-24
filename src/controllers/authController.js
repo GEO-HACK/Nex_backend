@@ -27,7 +27,7 @@ const register = async (req, res) => {
 		const newUser = await userModel.createUser(institutionName, fname, lname, username, email, role, password);
 
 		// Generate JWT token for the new user
-		const token = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+		const token = jwt.sign({ id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 		// Return user details and token
 		res.status(201).json({
@@ -35,7 +35,7 @@ const register = async (req, res) => {
 			token,
 			user: {
 				institutionName: newUser.institution_id,
-				id: newUser.id,
+				id: newUser._id,
 				fname: newUser.fname,
 				lname: newUser.lname,
 				username: newUser.username,
