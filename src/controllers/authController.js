@@ -35,7 +35,7 @@ const register = async (req, res) => {
 			token,
 			user: {
 				institutionName: newUser.institution_id,
-				id: newUser._id,
+				id: newUser.id,
 				fname: newUser.fname,
 				lname: newUser.lname,
 				username: newUser.username,

@@ -56,6 +56,7 @@ async function createUser(institutionName, fname, lname, username, email, role, 
     });
 
     await newUser.save();
+    console.log("User created successfully:", newUser);
     return newUser._id;
   } catch (error) {
     throw new Error(`Error creating user: ${error.message}`);
