@@ -40,6 +40,17 @@ userSchema.methods.comparePassword = function(candidatePassword) {
 
 const User = mongoose.model("User", userSchema);
 
+
+async function readAllUsers(){
+  try{
+    return await User.find().lean();
+
+  }catch(error){
+    console.error("Error reading all users", error);
+    return [];
+  }
+}
+
 // Create user with institution handling
 async function createUser(institutionName, fname, lname, username, email, role, password) {
   try {
@@ -121,6 +132,7 @@ async function joinInstitution(institutionName) {
 }
 
 module.exports = {
+  readAllUsers,
   createUser,
   readUserByMail,
   readUserById,

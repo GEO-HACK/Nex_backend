@@ -1,5 +1,17 @@
 const userModel = require("../models/userModel");
 
+const getAllUsers = async (req, res) => {
+	try{
+		const users = await userModel.readAllUsers();
+		res.status(200).json(users);
+
+	}catch (error) {
+		console.error("Error fetching all users:", error);
+		return res.status(500).json({ message: "Server error" });
+	}
+	
+};
+
 const getUser = async (req, res) => {
 	try {
 		console.log("User ID from token:", req.user.id);
@@ -40,6 +52,7 @@ const filterAuthors = async (req, res) => {
 };
 
 module.exports = {
+	getAllUsers,
     getUser,
     filterAuthors
 }
