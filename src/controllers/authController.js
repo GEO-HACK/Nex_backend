@@ -35,7 +35,7 @@ const register = async (req, res) => {
 			token,
 			user: {
 				institutionName: newUser.institution_id,
-				id: newUser.id,
+				id: newUser._id,
 				fname: newUser.fname,
 				lname: newUser.lname,
 				username: newUser.username,
@@ -68,11 +68,11 @@ const registerAdmin = async (req, res) => {
 			return res.status(400).json({ message: "User email already exists" });
 		}
 
-		console.log("Password: ", password);
+		
 		// Hash password
 		const hashedPassword = await bcrypt.hash(password, 10);
 
-		console.log("hashed password: ", hashedPassword);
+		
 		// Create user
 		userModel.createUser(institution, fname, lname, username, email, role, hashedPassword);
 		res.status(201).json({ message: "Admin registered successfully" });
@@ -100,13 +100,13 @@ const login = async (req, res) => {
 		}
 
 		// Generate JWT token
-		const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
+		const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 
 		res.status(200).json({
 			token,
 			user: {
 				institution: user.institution_id,
-				id: user.id,
+				id: user._id,
 				fname: user.fname,
 				lname: user.lname,
 				username: user.username,

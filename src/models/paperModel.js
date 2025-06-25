@@ -34,13 +34,8 @@ const Paper = mongoose.model("Paper", paperSchema);
 
 // ----- DATA ACCESS FUNCTIONS -----
 
-async function createPaper({category_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []},req, res) {
+async function createPaper({category_id,publisher_id, paper_name, file_url, description, meta = null, tags = [], coauthors = []},req, res) {
   try {
-
-  
-
-    const publisher_id = req.user.id
-    console.log("Publisher ID:", publisher_id);
     const paper = new Paper({
       category_id,
       publisher_id,
@@ -49,20 +44,12 @@ async function createPaper({category_id, paper_name, file_url, description, meta
       description,
       meta,
       tags,
+      coauthors,
       deleted: false,
     });
 
     await paper.save();
-  
 
-    const allAuthors = new Set([publisher_id.toString(), ...coauthors.map(String)]);
-    for (const author of allAuthors) {
-      const user = await User.findById(author);
-      if (!user) throw new Error(`Author ID ${author} does not exist`);
-      paper.coauthors.push(author);
-    }
-
-    await paper.save();
     return paper;
   } catch (err) {
     throw new Error(`Error creating paper: ${err.message}`);
