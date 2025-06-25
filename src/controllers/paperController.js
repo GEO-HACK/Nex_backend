@@ -157,9 +157,9 @@ const deletePaper = async (req, res) => {
 
 const getUserPapers = async (req, res) => {
 	try {
-		const publisherName = req.user.username;
+		const userId = req.user.id;
 
-		const papers = await paperModel.getPapersByUserId(publisherName);
+		const papers = await paperModel.getPapersByUserId(userId);
 
 		if (!papers || papers.length === 0) {
 			return res.status(404).json({ message: "No papers found for this user" });
