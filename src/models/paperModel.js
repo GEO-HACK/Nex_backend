@@ -58,6 +58,10 @@ async function createPaper({category_id,publisher_id, paper_name, file_url, desc
 
 async function updatePaper(paper_id, fields = {}) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(paper_id)) {
+      throw new Error("Invalid paper_id: not a valid ObjectId");
+    }
+
     const paper = await Paper.findById(paper_id);
     if (!paper) throw new Error("Paper not found");
 

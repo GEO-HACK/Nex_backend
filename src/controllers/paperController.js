@@ -60,7 +60,14 @@ const createPaper = async (req, res) => {
 
 const updateLocalPaper = async (req, res) => {
 	if (!req.body.id) return res.status(400).json({ error: "Paper id not provided" });
-	const paper_id = Number(req.body.id);
+	let paper_id;
+
+	try{
+		paper_id = new mongoose.Types.ObjectId(req.body._id);
+
+	}catch(error){
+		return res.status(400).json({ error: "Invalid paper id" });
+	}
 
 	const fields = {
 		category_id: req.body.category,
